@@ -112,7 +112,7 @@ public class MyGame extends Game {
 
                     levels[i].getCataPult().remove();
                     levels[i].getPauseWin().remove();
-                    // Load Birds
+
                     for (BirdState birdState : levelState.birds) {
                         if(Objects.equals(birdState.type, "Red")){
                             Red bird = new Red(levels[i].getWorld(), birdState.x, birdState.y, birdState.health, birdState.damage, levels[i].getCataPult());
@@ -154,7 +154,6 @@ public class MyGame extends Game {
                     }
                     levels[i].getStage().addActor(levels[i].getCataPult());
 
-                    // Load Pigs
                     for (PigState pigState : levelState.pigs) {
                         if(Objects.equals(pigState.type, "KingPig")){
                             KingPig pig = new KingPig(levels[i].getWorld(), pigState.x, pigState.y, pigState.health);
@@ -182,7 +181,6 @@ public class MyGame extends Game {
                         }
                     }
 
-                    // Load Blocks
                     for (BlockState blockState : levelState.blocks) {
                         if(Objects.equals(blockState.type,"HollowSquareGlass")) {
                             HollowSquareGlass block = new HollowSquareGlass(levels[i].getWorld(), blockState.x, blockState.y, blockState.health);
