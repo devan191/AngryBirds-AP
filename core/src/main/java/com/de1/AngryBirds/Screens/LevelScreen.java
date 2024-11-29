@@ -8,11 +8,13 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle;
+import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
@@ -21,6 +23,8 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.de1.AngryBirds.Levels.Level;
 import com.de1.AngryBirds.Levels.Level1;
 import com.de1.AngryBirds.MyGame;
+
+import java.awt.*;
 
 public class LevelScreen implements Screen {
 
@@ -69,12 +73,13 @@ public class LevelScreen implements Screen {
                 public void clicked(InputEvent event, float x, float y) {
 
                     if (hasSavedState(lvl)) {
-                        showRestoreMenu(lvl);
+                        createRestoreMenu(lvl);
+//                        LevelScreen.this.game.setScreen(LevelScreen.this.game.levels[lvl]);
                     }
                     else {
-//                        renderLvl(lvl);
                         LevelScreen.this.game.setScreen(new LoadingScreen(LevelScreen.this.game,lvl));
                     }
+
                 }
             });
 
@@ -120,14 +125,53 @@ public class LevelScreen implements Screen {
     }
 
     private boolean hasSavedState(int levelNumber) {
+        String filePath = "level" + levelNumber + ".json";
+        if(Gdx.files.local(filePath).exists()) {
+            return true;
+        }
         return false;
     }
 
+    private void createRestoreMenu(int levelNumber) {
+        Window.WindowStyle windowStyle = new Window.WindowStyle();
+        BitmapFont font1 = this.font;
+        font1.getData().setScale(0.9f);
+        windowStyle.titleFont = font;
+        windowStyle.background = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("Images\\WinBG.png"))));
 
-    private void showRestoreMenu(int levelNumber) {
-        System.out.println("This is restore menu. Enter: New Game or Restore Game");
+        TextButton.TextButtonStyle textButtonStyle = new TextButton.TextButtonStyle();
+        textButtonStyle.font = font;
+        textButtonStyle.up = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("Images\\MenuButtonTex.png"))));
+
+        Window restoreWin = new Window("Restore Menu", windowStyle);
+        restoreWin.setSize(500, 500);
+        restoreWin.setPosition(650, 300);
+        restoreWin.setMovable(false);
+
+        TextButton newGameButton = new TextButton("New Game", textButtonStyle);
+        newGameButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                LevelScreen.this.game.setScreen(new LoadingScreen(LevelScreen.this.game, levelNumber));
+                restoreWin.setVisible(false);
+            }
+        });
+
+        TextButton restoreGameButton = new TextButton("Restore Saved Game", textButtonStyle);
+        restoreGameButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                LevelScreen.this.game.loadLevel(levelNumber);
+                LevelScreen.this.game.setScreen(LevelScreen.this.game.levels[levelNumber]);
+                restoreWin.setVisible(false);
+            }
+        });
+
+        restoreWin.add(newGameButton).pad(10).row();
+        restoreWin.add(restoreGameButton).pad(10).row();
+
+        stage.addActor(restoreWin);
     }
-
 
     @Override
     public void render(float delta) {

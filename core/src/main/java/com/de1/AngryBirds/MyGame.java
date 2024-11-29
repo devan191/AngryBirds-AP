@@ -57,7 +57,6 @@ public class MyGame extends Game {
         bgMusic.play();
         setScreen(new SplashScreen(this));
 
-//        loadLevels();
     }
 
     public void loadLevel(int i) {
@@ -373,7 +372,7 @@ public class MyGame extends Game {
         try (ObjectOutputStream oos = new ObjectOutputStream(Gdx.files.local(filePath).write(false))) {
             GameData data = new GameData(this.LevelsCleared, this.highScores);
             oos.writeObject(data);
-            System.out.println("Game data saved successfully!");
+
         } catch (IOException e) {
             System.err.println("Failed to save game data: " + e.getMessage());
         }
@@ -381,7 +380,7 @@ public class MyGame extends Game {
 
     public void loadGameData(String filePath) {
         if (!Gdx.files.local(filePath).exists()) {
-            System.out.println("No save file found. Starting a new game.");
+
             this.LevelsCleared = 1;
             this.highScores = new int[this.TotalLvLs + 1];
             return;
@@ -390,9 +389,9 @@ public class MyGame extends Game {
             GameData data = (GameData) ois.readObject();
             this.LevelsCleared = data.levelsCleared;
             this.highScores = data.highScores;
-            System.out.println("Game data loaded successfully!");
+
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("No save file found. Starting a new game.");
+
             this.LevelsCleared = 1;
             this.highScores = new int[this.TotalLvLs + 1];
         }

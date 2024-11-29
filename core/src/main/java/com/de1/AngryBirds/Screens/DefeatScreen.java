@@ -112,6 +112,7 @@ public class DefeatScreen implements Screen {
         table.add(buttonTable).pad(20f).row();
 
         stage.addActor(table);
+        this.game.levels[Levelnum] = null;
     }
 
     @Override
