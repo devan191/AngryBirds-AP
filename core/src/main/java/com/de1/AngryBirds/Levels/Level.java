@@ -1,6 +1,7 @@
 package com.de1.AngryBirds.Levels;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -8,7 +9,11 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -19,26 +24,34 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.de1.AngryBirds.*;
 import com.de1.AngryBirds.GameObjects.Birds.Bird;
 import com.de1.AngryBirds.GameObjects.Blocks.Block;
 import com.de1.AngryBirds.GameObjects.CataPult;
 import com.de1.AngryBirds.GameObjects.Pigs.Pig;
-import com.de1.AngryBirds.MyGame;
 import com.de1.AngryBirds.Screens.DefeatScreen;
 import com.de1.AngryBirds.Screens.LevelScreen;
 import com.de1.AngryBirds.Screens.LoadingScreen;
 import com.de1.AngryBirds.Screens.VictoryScreen;
 
-import java.util.ArrayList;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.FileReader;
 
-public class Level implements Screen {
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public class Level implements Screen, Serializable {
 
     protected MyGame game;
+    protected World world;
+    protected Box2DDebugRenderer debugRenderer;
     protected int lvlnum;
-    protected int stars;
-    protected int score;
-    protected int HighestScore;
-    protected boolean isCleared;
+    public int score;
+    public int stars;
     protected Viewport viewport;
     protected OrthographicCamera cam;
     protected ArrayList<Bird> birds;
@@ -54,14 +67,16 @@ public class Level implements Screen {
     protected Window pauseWin;
     protected Label scorelabel;
     protected Label scoreval;
+    protected Label HSlabel;
+    protected Label HSval;
+    public boolean flag;
+
 
     public Level(MyGame game, int levelnum){
         this.game = game;
         this.lvlnum = levelnum;
-        this.stars = 0;
-        this.HighestScore = 0;
         this.score = 0;
-        this.isCleared = false;
+        this.stars = 0;
         this.blackfont = new BitmapFont(Gdx.files.internal("Fonts\\black.fnt"));
         this.whitefont = new BitmapFont(Gdx.files.internal("Fonts\\white.fnt"));
         this.cam = new OrthographicCamera();
@@ -69,25 +84,43 @@ public class Level implements Screen {
         this.birds = new ArrayList<>();
         this.pigs = new ArrayList<>();
         this.blocks = new ArrayList<>();
-        this.cataPult = new CataPult(180,275);
+        this.cataPult = new CataPult(180,275,this);
         this.LvlSprite = new Sprite(new Texture(Gdx.files.internal("Images\\angryBird_poachedEggbg.png")));
         this.stage = new Stage(viewport);
         Gdx.input.setInputProcessor(stage);
         this.table = new Table();
         this.table.setFillParent(true);
         this.paused = false;
+
+        this.flag = true;
         this.scorelabel = new Label("Score",new Label.LabelStyle(this.blackfont,Color.BLACK));
         scorelabel.setFontScale(2.0f);
-        scorelabel.setPosition(1650,770);
+        scorelabel.setPosition(1600,770);
         this.stage.addActor(this.scorelabel);
+
         this.scoreval = new Label(this.score+"",new Label.LabelStyle(this.whitefont,Color.WHITE));
         scoreval.setFontScale(2.0f);
-        scoreval.setPosition(1850,770);
+        scoreval.setPosition(1790,770);
         this.stage.addActor(this.scoreval);
 
-        createPauseMenu();
-        this.stage.addActor(pauseWin);
+        this.HSlabel = new Label("H.S",new Label.LabelStyle(this.blackfont,Color.BLACK));
+        HSlabel.setFontScale(1.2f);
+        HSlabel.setPosition(1600,720);
+        this.stage.addActor(this.HSlabel);
 
+        this.HSval = new Label(this.game.highScores[levelnum]+"",new Label.LabelStyle(this.whitefont,Color.BLACK));
+        HSval.setFontScale(1.2f);
+        HSval.setPosition(1700,720);
+        this.stage.addActor(this.HSval);
+
+        world = new World(new Vector2(0,-7f),true);
+        world.setContactListener(new GameCollisionHandler(this.game, this.lvlnum));
+        debugRenderer = new Box2DDebugRenderer();
+        debugRenderer.SHAPE_STATIC.set(1,0,0,1);
+
+        createPauseMenu();
+
+        createGround();
 
         TextButton.TextButtonStyle pauseButtonStyle = new TextButton.TextButtonStyle();
         pauseButtonStyle.font = whitefont;
@@ -116,26 +149,86 @@ public class Level implements Screen {
             }
         });
 
-        TextButton.TextButtonStyle winButtonStyle = new TextButton.TextButtonStyle();
-        winButtonStyle.font = whitefont;
-        winButtonStyle.fontColor = Color.WHITE;
-        winButtonStyle.up = new TextureRegionDrawable(new Texture(Gdx.files.internal("Images\\MenuButtonTex.png")));
-
-        TextButton winButton = new TextButton("WIN", winButtonStyle);
-        winButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                Level.this.game.bgMusic.pause();
-                Level.this.game.setScreen(new VictoryScreen(Level.this.game, Level.this.lvlnum));
-            }
-        });
-
         this.table.top().left().padTop(30).padLeft(30);
         this.table.add(pauseButton).padRight(10);
         this.table.add(replayButton).padRight(30);
-        this.table.add(winButton);
-        this.stage.addActor(this.table);
 
+        this.stage.addActor(this.table);
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float screenX, float screenY, int pointer, int button) {
+                return cataPult.handleTouchDown(screenX, screenY);
+            }
+
+            @Override
+            public void touchDragged(InputEvent event, float screenX, float screenY, int pointer) {
+                cataPult.handleTouchDragged(screenX, screenY);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float screenX, float screenY, int pointer, int button) {
+                cataPult.handleTouchUp(screenX, screenY);
+            }
+
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                if (keycode == Input.Keys.S) {
+                    for(Bird bird: birds){
+                        if(bird.isshot){
+                            bird.getBody().applyLinearImpulse(new Vector2(0, -1000000), bird.getBody().getWorldCenter(),true);
+                        }
+                    }
+                    return true;
+                }
+                if(keycode == Input.Keys.D){
+                    for(Bird bird: birds){
+                        if(bird.isshot){
+                            bird.getBody().setLinearVelocity(new Vector2(100000,0));
+                        }
+                    }
+                    return true;
+                }
+                if(keycode == Input.Keys.A){
+                    for(Bird bird: birds){
+                        if(bird.isshot){
+                            bird.getBody().applyLinearImpulse(new Vector2(-100000, 0),bird.getBody().getWorldCenter(),true);
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+        });
+
+    }
+
+    public Window getPauseWin() {
+        return pauseWin;
+    }
+
+    public World getWorld() {
+        return world;
+    }
+
+    public ArrayList<Bird> getBirds() {
+        return birds;
+    }
+
+    public ArrayList<Block> getBlocks() {
+        return blocks;
+    }
+
+    public ArrayList<Pig> getPigs() {
+        return pigs;
+    }
+
+    public CataPult getCataPult() {
+        return cataPult;
+    }
+
+    public Stage getStage() {
+        return stage;
     }
 
     protected void createPauseMenu() {
@@ -176,6 +269,7 @@ public class Level implements Screen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 Level.this.game.bgMusic.play();
+                Level.this.saveLevelState();
                 hidePauseMenu();
                 game.setScreen(new LevelScreen(game));
             }
@@ -199,9 +293,128 @@ public class Level implements Screen {
         pauseWin.setVisible(false);
     }
 
+    public Viewport getViewport() {
+        return viewport;
+    }
+
     @Override
     public void show() {
 
+    }
+
+    protected void removeDeadObjects() {
+
+        Iterator<Block> blockIterator = blocks.iterator();
+        while (blockIterator.hasNext()) {
+            Block block = blockIterator.next();
+            if (block.isDestroyed()) {
+                world.destroyBody(block.getBody());
+                block.remove();
+                blockIterator.remove();
+            }
+        }
+
+        Iterator<Pig> pigIterator = pigs.iterator();
+        while (pigIterator.hasNext()) {
+            Pig pig = pigIterator.next();
+            if (pig.isDestroyed() || pig.getBody().getPosition().x > 1920 || pig.getBody().getPosition().x < 250) {
+                world.destroyBody(pig.getBody());
+                pig.remove();
+                pigIterator.remove();
+            }
+        }
+
+        Iterator<Bird> birdIterator = birds.iterator();
+        while (birdIterator.hasNext()) {
+            Bird bird = birdIterator.next();
+            if (bird.isDestroyed() || bird.getBody().getPosition().x > 1920 || bird.getBody().getPosition().x < 0) {
+                world.destroyBody(bird.getBody());
+                bird.remove();
+                birdIterator.remove();
+                if(cataPult.getBird() == null){
+                    Bird birdToLoad = getBirdtoLoad();
+                    if( birdToLoad != null){
+                        cataPult.loadBird(birdToLoad);
+                    }
+                }
+            }
+        }
+    }
+
+    protected Bird getBirdtoLoad(){
+        float xcoor = 0;
+        Bird birdtoload = null;
+        for(Bird bird: birds){
+            if(!bird.isshot) {
+                if (bird.getBody().getPosition().x > xcoor) {
+                    xcoor = bird.getBody().getPosition().x;
+                    birdtoload = bird;
+                }
+            }
+        }
+        return birdtoload;
+    }
+
+    private void createGround() {
+
+        BodyDef groundBodyDef = new BodyDef();
+
+        groundBodyDef.position.set(1100, 95);
+        groundBodyDef.type = BodyDef.BodyType.StaticBody;
+
+        Body groundBody = world.createBody(groundBodyDef);
+
+        PolygonShape groundShape = new PolygonShape();
+        groundShape.setAsBox((1920f) , (1080 / 6.0f));
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = groundShape;
+        fixtureDef.friction = 0.8f;
+        fixtureDef.restitution = 0.0f;
+
+        groundBody.createFixture(fixtureDef);
+        groundShape.dispose();
+    }
+
+    public void saveLevelState() {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        LevelState levelState = new LevelState();
+
+        levelState.lvlnum = this.lvlnum;
+        levelState.score = this.score;
+        levelState.stars = this.stars;
+//        levelState.flag = this.flag;
+
+        levelState.birds = new ArrayList<>();
+        for (Bird bird : birds) {
+            Vector2 position = bird.getBody().getPosition();
+            Vector2 velocity = bird.getBody().getLinearVelocity();
+            String type = bird.getClass().getSimpleName();
+            levelState.birds.add(new BirdState(position.x, position.y, bird.getBody().getAngle(), velocity, bird.getBody().getAngularVelocity(), bird.getHealth(), bird.getDamage(), bird.isshot, type, bird.isLoaded));
+        }
+
+        levelState.pigs = new ArrayList<>();
+        for (Pig pig : pigs) {
+            Vector2 position = pig.getBody().getPosition();
+            Vector2 velocity = pig.getBody().getLinearVelocity();
+            String type = pig.getClass().getSimpleName();
+            levelState.pigs.add(new PigState(position.x, position.y, pig.getBody().getAngle(), velocity,pig.getHealth(), type, pig.getBody().getAngularVelocity()));
+        }
+
+        levelState.blocks = new ArrayList<>();
+        for (Block block : blocks) {
+            Vector2 position = block.getBody().getPosition();
+            Vector2 velocity = block.getBody().getLinearVelocity();
+            String type = block.getClass().getSimpleName();
+            levelState.blocks.add(new BlockState(position.x, position.y, block.getBody().getAngle()* MathUtils.radiansToDegrees,velocity ,block.getHealth(), type, block.getBody().getAngularVelocity()));
+        }
+
+        try (FileWriter writer = new FileWriter("level" + lvlnum + ".json")) {
+            gson.toJson(levelState, writer);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -211,6 +424,7 @@ public class Level implements Screen {
 
     @Override
     public void resize(int width, int height) {
+
         viewport.update(width, height, true);
     }
 
@@ -221,7 +435,6 @@ public class Level implements Screen {
 
     @Override
     public void resume() {
-
 
     }
 
