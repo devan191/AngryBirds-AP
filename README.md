@@ -110,8 +110,8 @@ https://www.pngwing.com/en/free-png-ncdva
 - Blocks and decors:
 https://www.spriters-resource.com/pc_computer/angrybirdsrio/sheet/113160/
 
-- Star png:
-https://www.pngwing.com/en/free-png-yzjwy
+- Stars png:
+https://pngtree.com/freepng/star-rating-steps-concept-with-feedback-rating_3605242.html
 
 - All birds, pig, and other ingame sprites have been mainly taken from:
 

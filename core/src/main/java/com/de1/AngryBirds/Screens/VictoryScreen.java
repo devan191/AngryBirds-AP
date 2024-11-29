@@ -16,6 +16,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.de1.AngryBirds.Levels.Level;
@@ -30,7 +31,7 @@ public class VictoryScreen implements Screen {
     private Stage stage;
     private BitmapFont font;
     private int Levelnum;
-    private Texture starimgTex;
+
 
     public VictoryScreen(MyGame game, int Levelnum) {
 
@@ -58,15 +59,19 @@ public class VictoryScreen implements Screen {
 
         Label.LabelStyle labelStyle = new Label.LabelStyle(font, Color.BLACK);
         Label victoryLabel = new Label("Level Cleared!", labelStyle);
-        victoryLabel.setFontScale(2.5f);
+        victoryLabel.setFontScale(1.5f);
 
-        this.starimgTex = new Texture(Gdx.files.internal("Images\\star.png"));
-        Image starimg1 = new Image(starimgTex);
-        Image starimg2 = new Image(starimgTex);
-        Image starimg3 = new Image(starimgTex);
 
-        Label scoreLabel = new Label("Score: 0", labelStyle);
-        Label highScoreLabel = new Label("Highest Score: 0", labelStyle);
+        Image starimg1 = new Image(new Texture(Gdx.files.internal("Images\\1star.png")));
+        Image starimg2 = new Image(new Texture(Gdx.files.internal("Images\\2star.png")));
+        Image starimg3 = new Image(new Texture(Gdx.files.internal("Images\\3star.png")));
+
+        Label scoreLabel = new Label("Score: "+game.levels[Levelnum].score, labelStyle);
+        if(game.levels[Levelnum].score > game.highScores[Levelnum]){
+            game.highScores[Levelnum] = game.levels[Levelnum].score;
+            table.add(new Label("New HighScore!",labelStyle)).row();
+        }
+        Label highScoreLabel = new Label("Highest Score: "+game.highScores[Levelnum], labelStyle);
 
         TextButton.TextButtonStyle nextLevelButtonStyle = new TextButton.TextButtonStyle();
         nextLevelButtonStyle.font = font;
@@ -113,9 +118,16 @@ public class VictoryScreen implements Screen {
         table.add(victoryLabel).expandX().pad(30f).row();
 
         Table starTable = new Table();
-        starTable.add(starimg1).pad(7f);
-        starTable.add(starimg2).pad(7f);
-        starTable.add(starimg3).pad(7f);
+
+        if(game.levels[Levelnum].stars >=3){
+            starTable.add(starimg3).pad(7f).expandX().align(Align.center);
+        }
+        else if(game.levels[Levelnum].stars >=2){
+            starTable.add(starimg2).pad(7f).expandX().align(Align.center);
+        }
+        else if(game.levels[Levelnum].stars >=1){
+            starTable.add(starimg1).pad(7f).expandX().align(Align.center);
+        }
         table.add(starTable).pad(20f).row();
 
         table.add(scoreLabel).pad(10f).row();
@@ -128,6 +140,8 @@ public class VictoryScreen implements Screen {
         table.add(buttonTable).pad(20f).row();
 
         stage.addActor(table);
+
+        game.levels[Levelnum] = null;
     }
 
     @Override
@@ -183,6 +197,6 @@ public class VictoryScreen implements Screen {
         victoryScreenSprite.getTexture().dispose();
         stage.dispose();
         font.dispose();
-        starimgTex.dispose();
+
     }
 }
